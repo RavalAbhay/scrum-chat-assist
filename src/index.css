@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrum AI - Developer-friendly chat design system. All colors HSL. */
+
+@layer base {
+  :root {
+    /* Light mode — soft slate, easy on the eyes (IDE-light vibe) */
+    --background: 220 20% 98%;
+    --foreground: 222 22% 14%;
+
+    --surface: 220 20% 96%;
+    --surface-elevated: 0 0% 100%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 22% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 22% 14%;
+
+    /* Primary = developer cyan/blue (think VS Code accent) */
+    --primary: 199 89% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 16% 93%;
+    --secondary-foreground: 222 22% 20%;
+
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 10% 42%;
+
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 38%;
+    --warning: 35 92% 50%;
+
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 199 89% 48%;
+
+    --radius: 0.625rem;
+
+    /* Chat surfaces */
+    --chat-user-bg: 199 50% 95%;
+    --chat-assistant-bg: 0 0% 100%;
+    --chat-system-bg: 220 16% 94%;
+    --sidebar-bg: 220 22% 96%;
+    --code-bg: 222 22% 14%;
+    --code-fg: 220 14% 92%;
+  }
+
+  .dark {
+    /* Dark mode — IDE-dark (One Dark / Tokyo Night inspired) */
+    --background: 222 18% 11%;
+    --foreground: 220 14% 90%;
+
+    --surface: 222 18% 13%;
+    --surface-elevated: 222 16% 16%;
+
+    --card: 222 16% 14%;
+    --card-foreground: 220 14% 90%;
+
+    --popover: 222 16% 14%;
+    --popover-foreground: 220 14% 90%;
+
+    --primary: 199 89% 60%;
+    --primary-foreground: 222 22% 10%;
+
+    --secondary: 222 14% 18%;
+    --secondary-foreground: 220 14% 90%;
+
+    --muted: 222 14% 18%;
+    --muted-foreground: 220 10% 62%;
+
+    --accent: 199 89% 60%;
+    --accent-foreground: 222 22% 10%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 55% 50%;
+    --warning: 38 92% 58%;
+
+    --border: 222 14% 20%;
+    --input: 222 14% 20%;
+    --ring: 199 89% 60%;
+
+    --chat-user-bg: 222 18% 18%;
+    --chat-assistant-bg: 222 16% 14%;
+    --chat-system-bg: 222 14% 18%;
+    --sidebar-bg: 222 20% 9%;
+    --code-bg: 222 22% 8%;
+    --code-fg: 220 14% 90%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  /* Markdown body */
+  .md-body {
+    @apply text-[15px] leading-7 text-foreground;
+  }
+  .md-body > *:first-child { @apply mt-0; }
+  .md-body > *:last-child { @apply mb-0; }
+  .md-body h1 { @apply text-xl font-semibold mt-6 mb-3; }
+  .md-body h2 { @apply text-lg font-semibold mt-5 mb-2; }
+  .md-body h3 { @apply text-base font-semibold mt-4 mb-2; }
+  .md-body p { @apply my-3; }
+  .md-body strong { @apply font-semibold; }
+  .md-body em { @apply italic; }
+  .md-body a { @apply text-accent underline underline-offset-2; }
+  .md-body ul { @apply list-disc pl-6 my-3 space-y-1; }
+  .md-body ol { @apply list-decimal pl-6 my-3 space-y-1; }
+  .md-body li > p { @apply my-0; }
+  .md-body blockquote { @apply border-l-2 border-border pl-4 my-3 text-muted-foreground; }
+  .md-body code:not(pre code) {
+    @apply rounded bg-muted px-1.5 py-0.5 text-[13px] font-mono;
+  }
+  .md-body pre {
+    @apply my-3 rounded-lg overflow-hidden text-[13px];
+  }
+  .md-body table {
+    @apply w-full my-4 border-collapse text-sm;
+  }
+  .md-body thead {
+    @apply bg-muted;
+  }
+  .md-body th, .md-body td {
+    @apply border border-border px-3 py-2 text-left align-top;
+  }
+  .md-body th { @apply font-semibold; }
+  .md-body hr { @apply my-6 border-border; }
+
+  .typing-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground;
+    animation: typing 1.2s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes typing {
+    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-2px); }
+  }
+
+  /* Scrollbar */
+  .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+  .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+}
