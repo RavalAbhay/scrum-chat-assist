@@ -19,11 +19,11 @@ const Index = () => {
 
   const loadSessions = useSessionStore((s) => s.loadSessions);
   const resetSessions = useSessionStore((s) => s.reset);
+  const resetContext = useContextStore((s) => s.reset);
   const sessions = useSessionStore((s) => s.sessions);
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
-  const ctx = useContextStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -46,6 +46,7 @@ const Index = () => {
     async function boot() {
       if (!token) {
         resetSessions();
+        resetContext();
         setReady(true);
         return;
       }
@@ -53,9 +54,6 @@ const Index = () => {
         const me = await fetchMe();
         if (cancelled) return;
         setUser(me);
-        if (me.projects.length && !ctx.projectId) {
-          ctx.setContext({ projectId: me.projects[0].id });
-        }
         try {
           await loadSessions();
         } catch (sessionError) {
@@ -65,6 +63,7 @@ const Index = () => {
         if (e?.response?.status === 401) {
           // JWT invalid/expired → back to login
           logout();
+          resetContext();
         } else {
           console.warn("Failed to boot chat workspace:", e);
         }
@@ -121,6 +120,7 @@ const Index = () => {
                 onClick={() => {
                   logout();
                   resetSessions();
+                  resetContext();
                 }}
                 className="rounded-md p-1.5 hover:bg-secondary text-muted-foreground"
                 aria-label="Log out"

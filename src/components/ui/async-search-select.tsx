@@ -12,8 +12,10 @@ export interface AsyncOption {
 interface AsyncSearchSelectProps {
   value?: string;
   onChange: (value: string | undefined, option?: AsyncOption) => void;
+  /** Preloaded options for local searching. If omitted, the component falls back to async loading. */
+  options?: AsyncOption[];
   /** Async loader. Receives the current query string. Should return matching options. */
-  fetchOptions: (query: string, signal: AbortSignal) => Promise<AsyncOption[]>;
+  fetchOptions?: (query: string, signal: AbortSignal) => Promise<AsyncOption[]>;
   placeholder?: string;
   emptyText?: string;
   /** Debounce delay in ms. Default 300. */
@@ -28,11 +30,16 @@ interface AsyncSearchSelectProps {
   /** Optional preloaded label for the current value (so trigger can show name without re-fetching). */
   selectedLabel?: string;
   ariaLabel?: string;
+  /** Show a loading affordance while options are being prepared. */
+  isLoading?: boolean;
+  /** Number of visible rows before the list scrolls. Default 5. */
+  maxVisibleItems?: number;
 }
 
 export function AsyncSearchSelect({
   value,
   onChange,
+  options: providedOptions,
   fetchOptions,
   placeholder = "Select...",
   emptyText = "No results",
@@ -44,15 +51,18 @@ export function AsyncSearchSelect({
   loadOnOpen = true,
   selectedLabel,
   ariaLabel,
+  isLoading,
+  maxVisibleItems = 5,
 }: AsyncSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
-  const [options, setOptions] = React.useState<AsyncOption[]>([]);
+  const [remoteOptions, setRemoteOptions] = React.useState<AsyncOption[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  const localMode = !!providedOptions;
 
   // Debounce query
   React.useEffect(() => {
@@ -62,24 +72,26 @@ export function AsyncSearchSelect({
 
   // Fetch when popover open + debounced query changes
   React.useEffect(() => {
+    if (localMode) return;
+    if (!fetchOptions) return;
     if (!open) return;
     if (!loadOnOpen && !debounced) {
-      setOptions([]);
+      setRemoteOptions([]);
       return;
     }
     const ctrl = new AbortController();
     setLoading(true);
     fetchOptions(debounced, ctrl.signal)
       .then((res) => {
-        setOptions(res);
+        setRemoteOptions(res);
         setActiveIndex(0);
       })
       .catch((err) => {
-        if (err?.name !== "AbortError") setOptions([]);
+        if (err?.name !== "AbortError") setRemoteOptions([]);
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [open, debounced, fetchOptions, loadOnOpen]);
+  }, [open, debounced, fetchOptions, loadOnOpen, localMode]);
 
   // Focus input when opening
   React.useEffect(() => {
@@ -89,18 +101,30 @@ export function AsyncSearchSelect({
     }
   }, [open]);
 
-  const triggerLabel = selectedLabel ?? placeholder;
+  const sourceOptions = providedOptions ?? remoteOptions;
+  const filteredOptions = React.useMemo(() => {
+    const sorted = [...sourceOptions].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    );
+    const term = query.trim().toLowerCase();
+    if (!term) return sorted;
+    return sorted.filter((opt) => opt.name.toLowerCase().startsWith(term));
+  }, [sourceOptions, query]);
+
+  const activeLoading = Boolean(isLoading || (!localMode && loading));
+  const triggerLabel =
+    selectedLabel ?? sourceOptions.find((opt) => opt.id === value)?.name ?? placeholder;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, filteredOptions.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const opt = options[activeIndex];
+      const opt = filteredOptions[activeIndex];
       if (opt) {
         onChange(opt.id, opt);
         setOpen(false);
@@ -116,7 +140,11 @@ export function AsyncSearchSelect({
       `[data-idx="${activeIndex}"]`
     );
     el?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex]);
+  }, [activeIndex, filteredOptions]);
+
+  React.useEffect(() => {
+    setActiveIndex(0);
+  }, [filteredOptions]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -135,15 +163,14 @@ export function AsyncSearchSelect({
           )}
         >
           <span
-            className={cn(
-              "truncate",
-              !value && "text-muted-foreground"
-            )}
+            className={cn("truncate", !value && "text-muted-foreground")}
           >
             {triggerLabel}
           </span>
           <span className="flex shrink-0 items-center gap-1">
-            {value && !disabled && (
+            {activeLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : value && !disabled ? (
               <X
                 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
@@ -151,7 +178,7 @@ export function AsyncSearchSelect({
                   onChange(undefined, undefined);
                 }}
               />
-            )}
+            ) : null}
             <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           </span>
         </button>
@@ -176,18 +203,21 @@ export function AsyncSearchSelect({
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
-        <div ref={listRef} className="max-h-64 overflow-y-auto p-1">
-          {loading && options.length === 0 ? (
+        <div
+          ref={listRef}
+          className="max-h-64 overflow-y-auto p-1"
+        >
+          {activeLoading && filteredOptions.length === 0 ? (
             <div className="flex items-center justify-center gap-2 px-3 py-6 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Searching...
             </div>
-          ) : options.length === 0 ? (
+          ) : filteredOptions.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-muted-foreground">
               {debounced ? emptyText : "Start typing to search"}
             </div>
           ) : (
-            options.map((opt, idx) => {
+            filteredOptions.map((opt, idx) => {
               const selected = value === opt.id;
               const active = idx === activeIndex;
               return (
